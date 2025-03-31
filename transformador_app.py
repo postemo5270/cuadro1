@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 from math import acos, tan, sqrt
 from fpdf import FPDF
 from io import BytesIO
@@ -157,8 +156,7 @@ def generar_pdf(df_cargas, resultados):
     # Guardar PDF
     pdf_output = BytesIO()
     pdf.output(pdf_output)
-    pdf_bytes = pdf_output.getvalue()
-    return pdf_bytes
+    return pdf_output.getvalue()
 
 # --- Interfaz Streamlit ---
 def main():
