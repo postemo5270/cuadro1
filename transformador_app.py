@@ -159,10 +159,13 @@ def generar_pdf(df_resultados, resultados):
         pdf.cell(60, 10, txt="Reserva Final (%):", border=1)
         pdf.cell(40, 10, txt=resultados["Reserva_final_%"], border=1, ln=True)
         
-        # Guardar PDF
+        # --- Corrección Clave ---
         pdf_output = BytesIO()
-        pdf.output(pdf_output)
-        return pdf_output.getvalue()
+        pdf_bytes = pdf.output(dest='S').encode('latin-1')  # Convierte a bytes
+        pdf_output.write(pdf_bytes)
+        pdf_output.seek(0)  # Rebobina el archivo
+        return pdf_output
+
     except Exception as e:
         st.error(f"Error al generar PDF: {str(e)}")
         raise
