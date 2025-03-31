@@ -116,23 +116,28 @@ def seleccionar_transformador(kva_total, fp_total, factor_div, reserva, tipo_tra
         "Cargabilidad_%": f"{(kva_div + perdidas / fp_total) / transformador_seleccionado * 100:.2f}%"
     }
 
-def generar_pdf(df_cargas, resultados):
+def generar_pdf(df_resultados, resultados):  # <- ¡Cambiado a df_resultados!
     pdf = FPDF(orientation='L')  # Horizontal
     pdf.add_page()
     pdf.set_font("Arial", size=10)
 
-    # --- Tabla de Cargas ---
+    # --- 1. Verifica columnas ---
+    columnas_requeridas = ["No", "Id", "Carga", "P_kW", "Q_kVAR", "S_kVA"]
+    if not all(col in df_resultados.columns for col in columnas_requeridas):
+        raise ValueError(f"El DataFrame debe tener las columnas: {columnas_requeridas}")
+
+    # --- 2. Tabla de Cargas ---
     pdf.cell(200, 10, txt="Listado de Cargas", ln=True, align='C')
-    columnas = ["No", "Id", "Carga", "P [kW]", "Q [kVAR]", "S [kVA]"]
+    columnas_pdf = ["No", "Id", "Carga", "P [kW]", "Q [kVAR]", "S [kVA]"]
     ancho_columnas = [15, 30, 60, 25, 25, 25]
     
     # Encabezados
-    for col, ancho in zip(columnas, ancho_columnas):
+    for col, ancho in zip(columnas_pdf, ancho_columnas):
         pdf.cell(ancho, 10, txt=col, border=1, align='C')
     pdf.ln()
     
     # Datos
-    for _, row in df_cargas.iterrows():
+    for _, row in df_resultados.iterrows():
         pdf.cell(ancho_columnas[0], 10, txt=str(row["No"]), border=1, align='C')
         pdf.cell(ancho_columnas[1], 10, txt=str(row["Id"]), border=1)
         pdf.cell(ancho_columnas[2], 10, txt=str(row["Carga"]), border=1)
@@ -141,7 +146,7 @@ def generar_pdf(df_cargas, resultados):
         pdf.cell(ancho_columnas[5], 10, txt=str(row["S_kVA"]), border=1, align='C')
         pdf.ln()
     
-    # --- Resumen Transformador ---
+    # --- 3. Resumen Transformador ---
     pdf.ln(10)
     pdf.cell(200, 10, txt="Resumen de Transformador Seleccionado", ln=True, align='C')
     pdf.cell(60, 10, txt="Capacidad (kVA):", border=1)
@@ -150,8 +155,6 @@ def generar_pdf(df_cargas, resultados):
     pdf.cell(40, 10, txt=resultados["Eficiencia"], border=1, ln=True)
     pdf.cell(60, 10, txt="Pérdidas (kW):", border=1)
     pdf.cell(40, 10, txt=str(resultados["Perdidas_kW"]), border=1, ln=True)
-    pdf.cell(60, 10, txt="Reserva Final (%):", border=1)
-    pdf.cell(40, 10, txt=resultados["Reserva_final_%"], border=1, ln=True)
     
     # Guardar PDF
     pdf_output = BytesIO()
