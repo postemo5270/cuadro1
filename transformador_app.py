@@ -1,9 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from math import acos, tan, sqrt, ceil
+from math import acos, tan, sqrt
 from fpdf import FPDF
-import base64
 from io import BytesIO
 
 # --- Configuración de la página ---
@@ -42,7 +41,7 @@ class Carga:
         # Validar tipo de carga
         tipos_permitidos = ["Iluminación", "Motor", "Eq Cómputo", "Aire acondicionado"]
         if tipo not in tipos_permitidos:
-            raise ValueError(f"Error: Tipo de carga '{tipo}' no válido. Opciones: {tipos_permitidos}")
+            raise ValueError(f"Tipo de carga '{tipo}' no válido. Opciones: {tipos_permitidos}")
 
         # Factor de potencia
         if tipo == "Iluminación":
@@ -66,7 +65,7 @@ class Carga:
 
         # Factor de utilización
         if tipo_uso not in ["Contínuo", "Intermitente", "Stand By"]:
-            raise ValueError("Error: Tipo de uso debe ser 'Contínuo', 'Intermitente' o 'Stand By'")
+            raise ValueError("Tipo de uso debe ser 'Contínuo', 'Intermitente' o 'Stand By'")
         fu = 0 if tipo_uso == "Stand By" else 1
 
         # Potencia activa (P)
@@ -77,7 +76,7 @@ class Carga:
         elif unidad == "kVA":
             p_kw = (valor * fp / eff) * fu
         else:
-            raise ValueError("Error: Unidad de potencia debe ser 'hp', 'kW' o 'kVA'")
+            raise ValueError("Unidad de potencia debe ser 'hp', 'kW' o 'kVA'")
 
         # Potencia reactiva (Q) y aparente (S)
         q_kvar = p_kw * tan(acos(fp))
@@ -207,15 +206,11 @@ def main():
             })
     
     # --- Cálculos ---
-   
-def main():
-  
-
-    if st.button("🔄 Calcular"):  # <-- ¡Agregar dos puntos aquí!
+    if st.button("🔄 Calcular"):
         df_cargas = pd.DataFrame(cargas)
         resultados_cargas = []
         
-        for idx, carga in df_cargas.iterrows():  # <-- Corrige "itemrows" a "iterrows"
+        for idx, carga in df_cargas.iterrows():
             try:
                 resultados = Carga(carga).calcular_potencias()
                 resultados_cargas.append({
@@ -233,9 +228,6 @@ def main():
                 st.error(f"Error en carga {carga['No']}: {str(e)}")
                 return
 
-      
-        st.dataframe(df_resultados)  # Ahora muestra FP, Eficiencia y más
-        
         df_resultados = pd.DataFrame(resultados_cargas)
         total_p = df_resultados["P_kW"].sum()
         total_q = df_resultados["Q_kVAR"].sum()
@@ -246,7 +238,7 @@ def main():
         
         # --- Mostrar Resultados ---
         st.header("📋 Resultados")
-        st.dataframe(df_resultados[["No", "Id", "Carga", "P_kW", "Q_kVAR", "S_kVA"]])
+        st.dataframe(df_resultados)
         
         st.subheader("📊 Totales del Sistema")
         st.write(f"**Potencia Activa Total (P):** {total_p:.2f} kW")
