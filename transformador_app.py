@@ -39,6 +39,11 @@ class Carga:
         valor = self.datos["Potencia_Valor"]
         tipo_uso = self.datos["Tipo_de_Uso"]
 
+        # Validar tipo de carga
+        tipos_permitidos = ["Iluminación", "Motor", "Eq Cómputo", "Aire acondicionado"]
+        if tipo not in tipos_permitidos:
+            raise ValueError(f"Error: Tipo de carga '{tipo}' no válido. Opciones: {tipos_permitidos}")
+
         # Factor de potencia
         if tipo == "Iluminación":
             fp = 0.9
@@ -60,6 +65,8 @@ class Carga:
             eff = 0.9 if vfd == "Sí" else 0.95
 
         # Factor de utilización
+        if tipo_uso not in ["Contínuo", "Intermitente", "Stand By"]:
+            raise ValueError("Error: Tipo de uso debe ser 'Contínuo', 'Intermitente' o 'Stand By'")
         fu = 0 if tipo_uso == "Stand By" else 1
 
         # Potencia activa (P)
@@ -67,8 +74,10 @@ class Carga:
             p_kw = (valor * 0.746 / eff) * fu
         elif unidad == "kW":
             p_kw = (valor / eff) * fu
-        else:  # kVA
+        elif unidad == "kVA":
             p_kw = (valor * fp / eff) * fu
+        else:
+            raise ValueError("Error: Unidad de potencia debe ser 'hp', 'kW' o 'kVA'")
 
         # Potencia reactiva (Q) y aparente (S)
         q_kvar = p_kw * tan(acos(fp))
@@ -78,7 +87,9 @@ class Carga:
             "P_kW": round(p_kw, 2),
             "Q_kVAR": round(q_kvar, 2),
             "S_kVA": s_kva,
-            "FP": fp
+            "FP": fp,
+            "Eficiencia": eff,
+            "Factor_Uso": fu
         }
 
 def seleccionar_transformador(kva_total, fp_total, factor_div, reserva, tipo_trafo):
@@ -196,18 +207,33 @@ def main():
             })
     
     # --- Cálculos ---
+   def main():
+  
+
     if st.button("🔄 Calcular"):
         df_cargas = pd.DataFrame(cargas)
         resultados_cargas = []
         
         for idx, carga in df_cargas.iterrows():
-            resultados = Carga(carga).calcular_potencias()
-            resultados_cargas.append({
-                "No": carga["No"],
-                "Id": carga["Id"],
-                "Carga": carga["Carga"],
-                **resultados
-            })
+            try:
+                resultados = Carga(carga).calcular_potencias()
+                resultados_cargas.append({
+                    "No": carga["No"],
+                    "Id": carga["Id"],
+                    "Carga": carga["Carga"],
+                    "Tipo": carga["Tipo"],
+                    "FP": resultados["FP"],
+                    "Eficiencia": resultados["Eficiencia"],
+                    "P_kW": resultados["P_kW"],
+                    "Q_kVAR": resultados["Q_kVAR"],
+                    "S_kVA": resultados["S_kVA"]
+                })
+            except ValueError as e:
+                st.error(f"Error en carga {carga['No']}: {str(e)}")
+                return
+
+      
+        st.dataframe(df_resultados)  # Ahora muestra FP, Eficiencia y más
         
         df_resultados = pd.DataFrame(resultados_cargas)
         total_p = df_resultados["P_kW"].sum()
