@@ -207,14 +207,15 @@ def main():
             })
     
     # --- Cálculos ---
-   def main():
+   
+def main():
   
 
-    if st.button("🔄 Calcular"):
+    if st.button("🔄 Calcular"):  # <-- ¡Agregar dos puntos aquí!
         df_cargas = pd.DataFrame(cargas)
         resultados_cargas = []
         
-        for idx, carga in df_cargas.iterrows():
+        for idx, carga in df_cargas.iterrows():  # <-- Corrige "itemrows" a "iterrows"
             try:
                 resultados = Carga(carga).calcular_potencias()
                 resultados_cargas.append({
