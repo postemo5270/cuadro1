@@ -116,50 +116,56 @@ def seleccionar_transformador(kva_total, fp_total, factor_div, reserva, tipo_tra
         "Cargabilidad_%": f"{(kva_div + perdidas / fp_total) / transformador_seleccionado * 100:.2f}%"
     }
 
-def generar_pdf(df_resultados, resultados):  # <- ¡Cambiado a df_resultados!
-    pdf = FPDF(orientation='L')  # Horizontal
-    pdf.add_page()
-    pdf.set_font("Arial", size=10)
+def generar_pdf(df_resultados, resultados):
+    try:
+        # Validar columnas
+        columnas_requeridas = ["No", "Id", "Carga", "P_kW", "Q_kVAR", "S_kVA"]
+        if not all(col in df_resultados.columns for col in columnas_requeridas):
+            raise ValueError(f"Faltan columnas en df_resultados. Requeridas: {columnas_requeridas}")
 
-    # --- 1. Verifica columnas ---
-    columnas_requeridas = ["No", "Id", "Carga", "P_kW", "Q_kVAR", "S_kVA"]
-    if not all(col in df_resultados.columns for col in columnas_requeridas):
-        raise ValueError(f"El DataFrame debe tener las columnas: {columnas_requeridas}")
+        pdf = FPDF(orientation='L')  # Horizontal
+        pdf.add_page()
+        pdf.set_font("Arial", size=10)
 
-    # --- 2. Tabla de Cargas ---
-    pdf.cell(200, 10, txt="Listado de Cargas", ln=True, align='C')
-    columnas_pdf = ["No", "Id", "Carga", "P [kW]", "Q [kVAR]", "S [kVA]"]
-    ancho_columnas = [15, 30, 60, 25, 25, 25]
-    
-    # Encabezados
-    for col, ancho in zip(columnas_pdf, ancho_columnas):
-        pdf.cell(ancho, 10, txt=col, border=1, align='C')
-    pdf.ln()
-    
-    # Datos
-    for _, row in df_resultados.iterrows():
-        pdf.cell(ancho_columnas[0], 10, txt=str(row["No"]), border=1, align='C')
-        pdf.cell(ancho_columnas[1], 10, txt=str(row["Id"]), border=1)
-        pdf.cell(ancho_columnas[2], 10, txt=str(row["Carga"]), border=1)
-        pdf.cell(ancho_columnas[3], 10, txt=str(row["P_kW"]), border=1, align='C')
-        pdf.cell(ancho_columnas[4], 10, txt=str(row["Q_kVAR"]), border=1, align='C')
-        pdf.cell(ancho_columnas[5], 10, txt=str(row["S_kVA"]), border=1, align='C')
+        # --- Tabla de Cargas ---
+        pdf.cell(200, 10, txt="Listado de Cargas", ln=True, align='C')
+        columnas_pdf = ["No", "Id", "Carga", "P [kW]", "Q [kVAR]", "S [kVA]"]
+        ancho_columnas = [15, 30, 60, 25, 25, 25]
+        
+        # Encabezados
+        for col, ancho in zip(columnas_pdf, ancho_columnas):
+            pdf.cell(ancho, 10, txt=col, border=1, align='C')
         pdf.ln()
-    
-    # --- 3. Resumen Transformador ---
-    pdf.ln(10)
-    pdf.cell(200, 10, txt="Resumen de Transformador Seleccionado", ln=True, align='C')
-    pdf.cell(60, 10, txt="Capacidad (kVA):", border=1)
-    pdf.cell(40, 10, txt=str(resultados["Transformador_seleccionado_kVA"]), border=1, ln=True)
-    pdf.cell(60, 10, txt="Eficiencia:", border=1)
-    pdf.cell(40, 10, txt=resultados["Eficiencia"], border=1, ln=True)
-    pdf.cell(60, 10, txt="Pérdidas (kW):", border=1)
-    pdf.cell(40, 10, txt=str(resultados["Perdidas_kW"]), border=1, ln=True)
-    
-    # Guardar PDF
-    pdf_output = BytesIO()
-    pdf.output(pdf_output)
-    return pdf_output.getvalue()
+        
+        # Datos
+        for _, row in df_resultados.iterrows():
+            pdf.cell(ancho_columnas[0], 10, txt=str(row["No"]), border=1, align='C')
+            pdf.cell(ancho_columnas[1], 10, txt=str(row["Id"]), border=1)
+            pdf.cell(ancho_columnas[2], 10, txt=str(row["Carga"]), border=1)
+            pdf.cell(ancho_columnas[3], 10, txt=str(row["P_kW"]), border=1, align='C')
+            pdf.cell(ancho_columnas[4], 10, txt=str(row["Q_kVAR"]), border=1, align='C')
+            pdf.cell(ancho_columnas[5], 10, txt=str(row["S_kVA"]), border=1, align='C')
+            pdf.ln()
+        
+        # --- Resumen Transformador ---
+        pdf.ln(10)
+        pdf.cell(200, 10, txt="Resumen de Transformador Seleccionado", ln=True, align='C')
+        pdf.cell(60, 10, txt="Capacidad (kVA):", border=1)
+        pdf.cell(40, 10, txt=str(resultados["Transformador_seleccionado_kVA"]), border=1, ln=True)
+        pdf.cell(60, 10, txt="Eficiencia:", border=1)
+        pdf.cell(40, 10, txt=resultados["Eficiencia"], border=1, ln=True)
+        pdf.cell(60, 10, txt="Pérdidas (kW):", border=1)
+        pdf.cell(40, 10, txt=str(resultados["Perdidas_kW"]), border=1, ln=True)
+        pdf.cell(60, 10, txt="Reserva Final (%):", border=1)
+        pdf.cell(40, 10, txt=resultados["Reserva_final_%"], border=1, ln=True)
+        
+        # Guardar PDF
+        pdf_output = BytesIO()
+        pdf.output(pdf_output)
+        return pdf_output.getvalue()
+    except Exception as e:
+        st.error(f"Error al generar PDF: {str(e)}")
+        raise
 
 # --- Interfaz Streamlit ---
 def main():
@@ -208,59 +214,62 @@ def main():
     
     # --- Cálculos ---
     if st.button("🔄 Calcular"):
-        df_cargas = pd.DataFrame(cargas)
-        resultados_cargas = []
-        
-        for idx, carga in df_cargas.iterrows():
-            try:
-                resultados = Carga(carga).calcular_potencias()
-                resultados_cargas.append({
-                    "No": carga["No"],
-                    "Id": carga["Id"],
-                    "Carga": carga["Carga"],
-                    "Tipo": carga["Tipo"],
-                    "FP": resultados["FP"],
-                    "Eficiencia": resultados["Eficiencia"],
-                    "P_kW": resultados["P_kW"],
-                    "Q_kVAR": resultados["Q_kVAR"],
-                    "S_kVA": resultados["S_kVA"]
-                })
-            except ValueError as e:
-                st.error(f"Error en carga {carga['No']}: {str(e)}")
-                return
+        try:
+            df_cargas = pd.DataFrame(cargas)
+            resultados_cargas = []
+            
+            for idx, carga in df_cargas.iterrows():
+                try:
+                    resultados = Carga(carga).calcular_potencias()
+                    resultados_cargas.append({
+                        "No": carga["No"],
+                        "Id": carga["Id"],
+                        "Carga": carga["Carga"],
+                        "Tipo": carga["Tipo"],
+                        "FP": resultados["FP"],
+                        "Eficiencia": resultados["Eficiencia"],
+                        "P_kW": resultados["P_kW"],
+                        "Q_kVAR": resultados["Q_kVAR"],
+                        "S_kVA": resultados["S_kVA"]
+                    })
+                except ValueError as e:
+                    st.error(f"Error en carga {carga['No']}: {str(e)}")
+                    return
 
-        df_resultados = pd.DataFrame(resultados_cargas)
-        total_p = df_resultados["P_kW"].sum()
-        total_q = df_resultados["Q_kVAR"].sum()
-        total_s = round(sqrt(total_p**2 + total_q**2), 2)
-        fp_total = total_p / total_s if total_s > 0 else 0
-        
-        resultados_trafo = seleccionar_transformador(total_s, fp_total, factor_div, reserva, tipo_trafo)
-        
-        # --- Mostrar Resultados ---
-        st.header("📋 Resultados")
-        st.dataframe(df_resultados)
-        
-        st.subheader("📊 Totales del Sistema")
-        st.write(f"**Potencia Activa Total (P):** {total_p:.2f} kW")
-        st.write(f"**Potencia Reactiva Total (Q):** {total_q:.2f} kVAR")
-        st.write(f"**Potencia Aparente Total (S):** {total_s:.2f} kVA")
-        st.write(f"**Factor de Potencia Total:** {fp_total:.2f}")
-        
-        st.subheader("🔧 Transformador Seleccionado")
-        st.write(f"**Capacidad:** {resultados_trafo['Transformador_seleccionado_kVA']} kVA")
-        st.write(f"**Eficiencia:** {resultados_trafo['Eficiencia']}")
-        st.write(f"**Pérdidas:** {resultados_trafo['Perdidas_kW']} kW")
-        st.write(f"**Reserva Final:** {resultados_trafo['Reserva_final_%']}")
-        
-        # --- Generar PDF ---
-        pdf_bytes = generar_pdf(df_resultados, resultados_trafo)
-        st.download_button(
-            label="📄 Descargar PDF",
-            data=pdf_bytes,
-            file_name="seleccion_transformador.pdf",
-            mime="application/pdf"
-        )
+            df_resultados = pd.DataFrame(resultados_cargas)
+            total_p = df_resultados["P_kW"].sum()
+            total_q = df_resultados["Q_kVAR"].sum()
+            total_s = round(sqrt(total_p**2 + total_q**2), 2)
+            fp_total = total_p / total_s if total_s > 0 else 0
+            
+            resultados_trafo = seleccionar_transformador(total_s, fp_total, factor_div, reserva, tipo_trafo)
+            
+            # --- Mostrar Resultados ---
+            st.header("📋 Resultados")
+            st.dataframe(df_resultados)
+            
+            st.subheader("📊 Totales del Sistema")
+            st.write(f"**Potencia Activa Total (P):** {total_p:.2f} kW")
+            st.write(f"**Potencia Reactiva Total (Q):** {total_q:.2f} kVAR")
+            st.write(f"**Potencia Aparente Total (S):** {total_s:.2f} kVA")
+            st.write(f"**Factor de Potencia Total:** {fp_total:.2f}")
+            
+            st.subheader("🔧 Transformador Seleccionado")
+            st.write(f"**Capacidad:** {resultados_trafo['Transformador_seleccionado_kVA']} kVA")
+            st.write(f"**Eficiencia:** {resultados_trafo['Eficiencia']}")
+            st.write(f"**Pérdidas:** {resultados_trafo['Perdidas_kW']} kW")
+            st.write(f"**Reserva Final:** {resultados_trafo['Reserva_final_%']}")
+            
+            # --- Generar PDF ---
+            pdf_bytes = generar_pdf(df_resultados, resultados_trafo)
+            st.download_button(
+                label="📄 Descargar PDF",
+                data=pdf_bytes,
+                file_name="seleccion_transformador.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"Error en los cálculos: {str(e)}")
 
 if __name__ == "__main__":
     main()
